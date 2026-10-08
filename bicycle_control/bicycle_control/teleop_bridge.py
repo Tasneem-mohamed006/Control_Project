@@ -17,8 +17,8 @@ from std_msgs.msg import Float32
 # ==============================================================================
 # Phase 2 (Milestone 4): Uncomment these imports when upgrading to cruise control
 # ==============================================================================
-# from nav_msgs.msg import Odometry
-# from bicycle_control.longitudinal_pid import PIDLongitudinalController
+from nav_msgs.msg import Odometry
+from bicycle_control.longitudinal_pid import PIDLongitudinalController
 
 
 class TeleopBridge(Node):
@@ -49,32 +49,100 @@ class TeleopBridge(Node):
         self.current_throttle = 0.0
         self.current_steer = 0.0
         self.target_vel = 0.0
+        self.current_vel = 0.0
         self.last_cmd_time = self.get_clock().now()
 
         # TODO: Phase 2 (Milestone 4.2) — Closed-Loop Cruise Control Setup
         # This allows the car to automatically hold a steady speed instead of requiring manual throttle.
         # Initialize the PID speed controller and subscribe to odometry data.
+        self.speed_controller = PIDLongitudinalController(
+            kp=1.0,
+            ki=0.2,
+            kd=0.05,
+            dt=0.1
+        )
 
+        self.odom_sub = self.create_subscription(
+            Odometry,
+            '/state',
+            self.odom_callback,
+            10
+        )
+        
         # Publish loop at 10 Hz
         self.timer = self.create_timer(0.1, self.publish_commands)
 
-    # def odom_callback(self, msg: Odometry):
-    #     """Milestone 4.2: Extracts vehicle forward speed from /state odometry."""
-    #     pass
+    def odom_callback(self, msg: Odometry):
+          # """Milestone 4.2: Extracts vehicle forward speed from /state odometry."""
+          self.current_vel = msg.twist.twist.linear.x
+    
 
     def cmd_callback(self, msg: Twist):
         """Translates Twist linear.x to throttle [-1, 1] and angular.z into steering (rad)."""
         # TODO: Milestone 3.1 — Teleoperation Command Mapping
         # This connects user inputs (keyboard/joystick) to the car's physical actuators.
         # Map the incoming Twist linear/angular commands to throttle and steering.
-        pass
+        if self.use_cruise_control:
+            self.target_vel = float(
+                np.clip(msg.linear.x, 0.0, self.max_linear_vel)
+            )
+            self.current_throttle = self.speed_controller.compute(
+                self.target_vel,
+                self.current_vel
+            )
+        else:
+            throttle = msg.linear.x / self.max_linear_vel
+            self.current_throttle = float(
+                np.clip(throttle, -1.0, 1.0)
+            )
 
+
+        steer = msg.angular.z / self.max_angular_vel
+        self.current_steer = float(
+        np.clip(
+            steer * self.max_steer_rad,
+            -self.max_steer_rad,
+            self.max_steer_rad
+        )
+    )
+
+        self.last_cmd_time = self.get_clock().now()
+        
     def publish_commands(self):
         """Periodically publishes throttle and steering commands at 10 Hz."""
         # TODO: Milestone 3.2 — Safety Watchdog & Command Publishing
         # This prevents the car from running away if the user's connection drops.
         # Publish the commands, or zero them out if the last command is too old.
-        pass
+        elapsed = (
+            self.get_clock().now() - self.last_cmd_time
+        ).nanoseconds / 1e9
+
+        if elapsed > self.auto_zero_timeout:
+            throttle = 0.0
+            steer = 0.0
+
+            if self.use_cruise_control:
+                self.target_vel = 0.0
+                self.speed_controller.reset()
+        else:
+            if self.use_cruise_control:
+                throttle = self.speed_controller.compute(
+                    self.target_vel,
+                    self.current_vel
+                )
+            else:
+                throttle = self.current_throttle
+
+            steer = self.current_steer
+
+        throttle_msg = Float32()
+        throttle_msg.data = float(throttle)
+
+        steer_msg = Float32()
+        steer_msg.data = float(steer)
+
+        self.throttle_pub.publish(throttle_msg)
+        self.steer_pub.publish(steer_msg)
 
 
 def main(args=None):
