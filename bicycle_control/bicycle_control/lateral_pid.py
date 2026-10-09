@@ -62,10 +62,10 @@ class LateralPIDController:
         # Heading correction
         yaw_correction = self.k_yaw * heading_err
 
-        # Combined steering command
+        # all steering command
         steering = -(proportional + integral + derivative + yaw_correction)
 
-        # Clamp steering to physical limits
+        # Clamp steering 
         steering = np.clip(
             steering,
             -self.max_steer_rad,
