@@ -53,13 +53,12 @@ class PIDLongitudinalController:
             (error - self.prev_error) / self.dt
         )
 
-        # Update previous error
+
         self.prev_error = error
 
-        # PID output
         output = proportional + integral + derivative
 
-        # Limit output to normalized throttle/braking range
+        # Limit output
         output = np.clip(
             output,
             -self.max_brake,
