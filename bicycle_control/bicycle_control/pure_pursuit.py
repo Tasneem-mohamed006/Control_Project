@@ -56,7 +56,6 @@ class PurePursuitController:
             if distance >= lookahead:
                 return i, (px, py)
 
-        # If no point is far enough, return the last waypoint
         last_idx = len(path_points) - 1
         px, py, _ = path_points[last_idx]
 
@@ -69,7 +68,6 @@ class PurePursuitController:
         # local frame, then use the arc geometry formula to compute the steering angle.
         target_x, target_y = target_pt
 
-        # Translate target point relative to vehicle position
         dx = target_x - x
         dy = target_y - y
 
@@ -82,7 +80,7 @@ class PurePursuitController:
         # Convert curvature to steering angle
         steering = math.atan(self.L * curvature)
 
-        # Clamp steering to physical limits
+        # Clamp steering
         steering = np.clip(
             steering,
             -self.max_steer_rad,
