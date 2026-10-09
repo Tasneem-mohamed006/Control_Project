@@ -86,11 +86,9 @@ class KinematicBicycleMPC:
         if N < 2:
             return (0.0, 0.0)
 
-    # ---- bounds: u = [delta_0, a_0, delta_1, a_1, ...]
         bounds = [(-self.max_steer_rad, self.max_steer_rad),
                   (-self.k_a, self.k_a)] * N
 
-    # ---- precompute everything that does not depend on u
         ref = np.asarray(ref_trajectory[:N], dtype=float)
         xr, yr, yawr, vr = (ref[:, i].tolist() for i in range(4))
         sin_r = np.sin(yawr).tolist()
@@ -110,7 +108,7 @@ class KinematicBicycleMPC:
                 delta = u[2 * k]
                 accel = u[2 * k + 1]
 
-            # extended kinematic bicycle, forward Euler
+            # extended kinematic bicycle with Euler
                 x   += v * cos(yaw) * dt
                 y   += v * sin(yaw) * dt
                 yaw += v / L * tan(delta) * dt
@@ -133,7 +131,7 @@ class KinematicBicycleMPC:
 
             return cost
 
-    # ---- warm start: shift previous solution by one step, repeat the last
+    # ---- warm start
         prev = np.asarray(self.last_u, dtype=float)
         if prev.size < 2 * N:                       # safety if N grew / first call
             prev = np.concatenate([prev, np.zeros(2 * N - prev.size)])
