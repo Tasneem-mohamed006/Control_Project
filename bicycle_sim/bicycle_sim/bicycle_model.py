@@ -172,7 +172,6 @@ class Car(Node):
             d_rot = self.x[3] * self.dt / self.wheel_radius
             self.wheel_rotation = (self.wheel_rotation + d_rot) % (2 * math.pi)
 
-        # Publish TF, JointState, and Odometry
         now = self.get_clock().now().to_msg()
         self.publish_tf(now)
         self.publish_joint_states(now)
