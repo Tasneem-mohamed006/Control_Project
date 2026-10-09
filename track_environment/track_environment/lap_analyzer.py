@@ -349,7 +349,6 @@ class LapAnalyzer(Node):
             best_lap_time = None
 
 
-        # Assemble JSON telemetry
         telemetry = {
             'lap': self.lap_count,
             'current_lap_time': float(self.current_lap_time),
@@ -363,7 +362,6 @@ class LapAnalyzer(Node):
             )
         }
 
-        # Publish JSON telemetry
         metrics_msg = String()
         metrics_msg.data = json.dumps(telemetry)
         self.metrics_pub.publish(metrics_msg)
